@@ -1,0 +1,88 @@
+[
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "isbn",
+        "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "enum BookLibrary.BookActions",
+        "name": "bookAction",
+        "type": "uint8"
+      }
+    ],
+    "name": "BookAction",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "isbn",
+        "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "borrowerAddress",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "enum BookLibrary.BorrowActions",
+        "name": "borrowAction",
+        "type": "uint8"
+      }
+    ],
+    "name": "BorrowAction",
+    "type": "event"
+  },
+  {
+    "inputs": [
+      { "internalType": "string", "name": "_isbn", "type": "string" },
+      { "internalType": "string", "name": "_title", "type": "string" },
+      { "internalType": "uint16", "name": "_quantity", "type": "uint16" }
+    ],
+    "name": "AddUpdateBook",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [{ "internalType": "string", "name": "_isbn", "type": "string" }],
+    "name": "BorrowBook",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [{ "internalType": "string", "name": "_isbn", "type": "string" }],
+    "name": "ReturnBook",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [{ "internalType": "string", "name": "", "type": "string" }],
+    "name": "booksMap",
+    "outputs": [
+      { "internalType": "string", "name": "title", "type": "string" },
+      { "internalType": "uint16", "name": "quantity", "type": "uint16" }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "owner",
+    "outputs": [{ "internalType": "address", "name": "", "type": "address" }],
+    "stateMutability": "view",
+    "type": "function"
+  }
+]

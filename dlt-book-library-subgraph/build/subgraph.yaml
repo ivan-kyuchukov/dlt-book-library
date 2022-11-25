@@ -1,0 +1,26 @@
+specVersion: 0.0.5
+schema:
+  file: schema.graphql
+dataSources:
+  - kind: ethereum
+    name: BookLibrary
+    network: goerli
+    source:
+      address: "0xd4ED1630f22abF1DAe1B8515AA374EfA68B414A7"
+      abi: BookLibrary
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - BookAction
+        - BorrowAction
+      abis:
+        - name: BookLibrary
+          file: BookLibrary/abis/BookLibrary.json
+      eventHandlers:
+        - event: BookAction(string,uint8)
+          handler: handleBookAction
+        - event: BorrowAction(string,address,uint8)
+          handler: handleBorrowAction
+      file: BookLibrary/BookLibrary.wasm

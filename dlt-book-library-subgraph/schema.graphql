@@ -1,0 +1,18 @@
+type BookAction @entity(immutable: true) {
+  id: Bytes!
+  isbn: String! # string
+  bookAction: Int! # uint8
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type BorrowAction @entity(immutable: true) {
+  id: Bytes!
+  isbn: String! # string
+  borrowerAddress: Bytes! # address
+  borrowAction: Int! # uint8
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
