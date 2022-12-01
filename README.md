@@ -8,6 +8,6 @@ Try running some of the following tasks:
 npx hardhat help
 npx hardhat test
 
-npx hardhat deploy-testnets --network goerli --private-key {{YOUR_PRIVATE_KEY}}
+npx hardhat deploy-testnets --network goerli --private-key {{YOUR_MM_PRIVATE_KEY}}
 npx hardhat verify-contract --network goerli --contract-address {{CONTRACT_ADDRESS_RETURNED_FROM_DEPLOY}}
 ```

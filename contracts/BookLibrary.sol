@@ -5,6 +5,7 @@ import '@openzeppelin/contracts/access/Ownable.sol';
 
 contract BookLibrary is Ownable {
     struct Book {
+        string isbn;
         string title;
         uint16 quantity;
         mapping(address => bool) borrowers;
@@ -21,6 +22,7 @@ contract BookLibrary is Ownable {
     event BorrowAction(string indexed isbn, address borrowerAddress, BorrowActions indexed borrowAction);
 
     function insertBook(string calldata _isbn, string calldata _title, uint16 _quantity) private {
+        booksMap[_isbn].isbn = _isbn;
         booksMap[_isbn].title = _title;
         booksMap[_isbn].quantity = _quantity;
 
@@ -30,8 +32,12 @@ contract BookLibrary is Ownable {
         }
     }
 
-    function getBook(uint _index) view private returns (string memory, uint16) {
-        return (booksMap[bookKeysArr[_index]].title, booksMap[bookKeysArr[_index]].quantity);
+    function getSize() external view returns (uint) {
+        return bookKeysArr.length;
+    }
+
+    function getBook(uint _index) external view returns (string memory, string memory, uint16) {
+        return (booksMap[bookKeysArr[_index]].isbn, booksMap[bookKeysArr[_index]].title, booksMap[bookKeysArr[_index]].quantity);
     }
 
     function AddUpdateBook(string calldata _isbn, string calldata _title, uint16 _quantity) external onlyOwner {
@@ -42,6 +48,7 @@ contract BookLibrary is Ownable {
         Book storage book = booksMap[_isbn];
         if (bytes(book.title).length > 0) { // if the books exists
             require(_quantity >= book.quantity, "You cannot remove books");
+            book.isbn = _isbn;
             book.title = _title;
             book.quantity = _quantity;
             emit BookAction(_isbn, BookActions.Created);

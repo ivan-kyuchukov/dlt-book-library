@@ -1,14 +1,14 @@
 require("@nomicfoundation/hardhat-toolbox")
 require('dotenv').config({ path: __dirname + '/.env' })
 
-const { API_URL, PRIVATE_KEY, ETHERSCAN_API_KEY } = process.env
+const { INFURA_API_URL, MM_PRIVATE_KEY, ETHERSCAN_API_KEY } = process.env
 
 module.exports = {
   solidity: "0.8.17",
   networks: {
     goerli: {
-      url: API_URL,
-      accounts: [PRIVATE_KEY]
+      url: INFURA_API_URL,
+      accounts: [MM_PRIVATE_KEY]
     }
   },
   etherscan: {
@@ -35,7 +35,6 @@ module.exports = {
 };
 
 task("deploy-testnets", "Deploys contract on a provided network")
-    .addParam("privateKey", "Please provide the private key")
     .setAction(async (taskArgs, hre, runSuper) => {
         const deployContract = require("./scripts/deploy");
         await deployContract(taskArgs);
