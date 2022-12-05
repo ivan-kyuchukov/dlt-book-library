@@ -11,6 +11,7 @@ contract BookLibrary is Ownable {
         string title;
         uint16 quantity;
         mapping(address => bool) borrowers;
+        address[] borrowersKeys;
     }
 
     mapping(bytes32 => Book) private books;
@@ -39,8 +40,7 @@ contract BookLibrary is Ownable {
     error CannotDecreaseBookQuantity(address caller, bytes32 _bookId, uint16 _oldQuantity, uint16 _newQuantity);
     // End declarations
 
-    function insertBook(bytes32 id, string calldata _isbn, string calldata _title, uint16 _quantity) private {
-        Book storage book = books[id];
+    function insertBook(Book storage book, bytes32 id, string calldata _isbn, string calldata _title, uint16 _quantity) private {
         book.id = id;
         book.isbn = _isbn;
         book.title = _title;
@@ -57,12 +57,20 @@ contract BookLibrary is Ownable {
         return keccak256(abi.encodePacked(_stringToHash));
     }
 
-    function getSize() external view returns (uint) {
+    function getBookListSize() external view returns (uint) {
         return bookKeys.length;
     }
 
     function getBook(uint _index) external view returns (bytes32, string memory, string memory, uint16) {
         return (books[bookKeys[_index]].id, books[bookKeys[_index]].isbn, books[bookKeys[_index]].title, books[bookKeys[_index]].quantity);
+    }
+
+    function getBorrowersListSizePerBook(bytes32 _bookId) external view returns (uint) {
+        return books[_bookId].borrowersKeys.length;
+    }
+
+    function getBorrower(bytes32 _bookId, uint _index) external view returns (address) {
+        return books[_bookId].borrowersKeys[_index];
     }
 
     function AddUpdateBook(string calldata _isbn, string calldata _title, uint16 _quantity) external onlyOwner validNewBook(_isbn, _title, _quantity) {
@@ -77,29 +85,32 @@ contract BookLibrary is Ownable {
             emit BookAction(bookId, _isbn, BookActions.Created);
         }
         else {
-            insertBook(bookId, _isbn, _title, _quantity);
+            insertBook(book, bookId, _isbn, _title, _quantity);
             emit BookAction(bookId, _isbn, BookActions.Updated);
         }
     }
 
     function BorrowBook(bytes32 _bookId) external {
-        string memory isbn = books[_bookId].isbn;
+        Book storage book = books[_bookId];
         if (books[_bookId].borrowers[msg.sender]) revert BookAttemptToBorrowTwice(msg.sender, _bookId);
         if (books[_bookId].quantity == 0) revert BookNotAvailableToBorrow(msg.sender, _bookId);
 
-        books[_bookId].quantity--;
-        books[_bookId].borrowers[msg.sender] = true;
+        book.quantity--;
+        book.borrowers[msg.sender] = true;
+        book.borrowersKeys.push(msg.sender);
 
-        emit BorrowAction(_bookId, isbn, msg.sender, BorrowActions.Borrowed);
+        emit BorrowAction(_bookId, book.isbn, msg.sender, BorrowActions.Borrowed);
     }
 
-    function ReturnBook(bytes32 _bookId) external {
-        string memory isbn = books[_bookId].isbn;
-        if (!books[_bookId].borrowers[msg.sender]) revert BookWasntBorrowedFromUser(msg.sender, _bookId);
+    function ReturnBook(bytes32 _bookId, uint _index) external {
+        Book storage book = books[_bookId];
+        if (!book.borrowers[msg.sender]) revert BookWasntBorrowedFromUser(msg.sender, _bookId);
 
-        books[_bookId].quantity++;
-        books[_bookId].borrowers[msg.sender] = false;
+        book.quantity++;
+        book.borrowers[msg.sender] = false;
+        book.borrowersKeys[_index] = book.borrowersKeys[book.borrowersKeys.length - 1];
+        book.borrowersKeys.pop();
 
-        emit BorrowAction(_bookId, isbn, msg.sender, BorrowActions.Returned);
+        emit BorrowAction(_bookId, book.isbn, msg.sender, BorrowActions.Returned);
     }
 }
