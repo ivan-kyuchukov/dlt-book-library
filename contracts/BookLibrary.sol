@@ -4,81 +4,102 @@ pragma abicoder v2;
 import '@openzeppelin/contracts/access/Ownable.sol';
 
 contract BookLibrary is Ownable {
+    // Declarations
     struct Book {
+        bytes32 id;
         string isbn;
         string title;
         uint16 quantity;
         mapping(address => bool) borrowers;
     }
 
-    mapping(string => Book) public booksMap;
-    mapping(string => bool) private insertedBooks;
-    string[] private bookKeysArr;
+    mapping(bytes32 => Book) private books;
+    mapping(bytes32 => bool) private insertedBooks;
+    bytes32[] private bookKeys;
 
     enum BookActions { Created, Updated }
-    event BookAction(string indexed isbn, BookActions indexed bookAction);
+    event BookAction(bytes32 indexed id, string indexed isbn, BookActions indexed bookAction);
 
     enum BorrowActions { Borrowed, Returned }
-    event BorrowAction(string indexed isbn, address borrowerAddress, BorrowActions indexed borrowAction);
+    event BorrowAction(bytes32 indexed id, string indexed isbn, address borrowerAddress, BorrowActions indexed borrowAction);
 
-    function insertBook(string calldata _isbn, string calldata _title, uint16 _quantity) private {
-        booksMap[_isbn].isbn = _isbn;
-        booksMap[_isbn].title = _title;
-        booksMap[_isbn].quantity = _quantity;
+    modifier validNewBook (string calldata _isbn, string calldata _title, uint16 _quantity) {
+        if (bytes(_isbn).length == 0) revert IsbnEmpty(msg.sender, _isbn);
+        if (bytes(_title).length == 0) revert TitleEmpty(msg.sender, _isbn, _title);
+        if (_quantity < 0) revert QuantityLessThanZero(msg.sender, _isbn, _quantity);
+        _;
+    }
 
-        if (!insertedBooks[_isbn]) {
-            insertedBooks[_isbn] = true;
-            bookKeysArr.push(_isbn);
+    error IsbnEmpty(address caller, string _isbn);
+    error TitleEmpty(address caller, string _isbn, string _title);
+    error QuantityLessThanZero(address caller, string _isbn, uint16 _quantity);
+    error BookAttemptToBorrowTwice(address caller, bytes32 _bookId);
+    error BookNotAvailableToBorrow(address caller, bytes32 _bookId);
+    error BookWasntBorrowedFromUser(address caller, bytes32 _bookId);
+    error CannotDecreaseBookQuantity(address caller, bytes32 _bookId, uint16 _oldQuantity, uint16 _newQuantity);
+    // End declarations
+
+    function insertBook(bytes32 id, string calldata _isbn, string calldata _title, uint16 _quantity) private {
+        Book storage book = books[id];
+        book.id = id;
+        book.isbn = _isbn;
+        book.title = _title;
+        book.quantity = _quantity;
+
+        if (!insertedBooks[id]) {
+            insertedBooks[id] = true;
+            bookKeys.push(id);
         }
+    }
+
+    // this is public for testing purposes
+    function hash(string calldata _stringToHash) public pure returns (bytes32) {
+        return keccak256(abi.encodePacked(_stringToHash));
     }
 
     function getSize() external view returns (uint) {
-        return bookKeysArr.length;
+        return bookKeys.length;
     }
 
-    function getBook(uint _index) external view returns (string memory, string memory, uint16) {
-        return (booksMap[bookKeysArr[_index]].isbn, booksMap[bookKeysArr[_index]].title, booksMap[bookKeysArr[_index]].quantity);
+    function getBook(uint _index) external view returns (bytes32, string memory, string memory, uint16) {
+        return (books[bookKeys[_index]].id, books[bookKeys[_index]].isbn, books[bookKeys[_index]].title, books[bookKeys[_index]].quantity);
     }
 
-    function AddUpdateBook(string calldata _isbn, string calldata _title, uint16 _quantity) external onlyOwner {
-        require(bytes(_isbn).length > 0, "ISBN cannot be empty");
-        require(bytes(_title).length > 0, "Title cannot be empty");
-        require(_quantity >= 0, "Quantity cannot be less than 0");
-
-        Book storage book = booksMap[_isbn];
-        if (bytes(book.title).length > 0) { // if the books exists
-            require(_quantity >= book.quantity, "You cannot remove books");
+    function AddUpdateBook(string calldata _isbn, string calldata _title, uint16 _quantity) external onlyOwner validNewBook(_isbn, _title, _quantity) {
+        bytes32 bookId = hash(_isbn);
+        Book storage book = books[bookId];
+        
+        if (insertedBooks[bookId]) {
+            if (_quantity < book.quantity) revert CannotDecreaseBookQuantity(msg.sender, bookId, book.quantity, _quantity);
             book.isbn = _isbn;
             book.title = _title;
             book.quantity = _quantity;
-            emit BookAction(_isbn, BookActions.Created);
+            emit BookAction(bookId, _isbn, BookActions.Created);
         }
         else {
-            insertBook(_isbn, _title, _quantity);
-            emit BookAction(_isbn, BookActions.Updated);
+            insertBook(bookId, _isbn, _title, _quantity);
+            emit BookAction(bookId, _isbn, BookActions.Updated);
         }
     }
 
-    function BorrowBook(string calldata _isbn) external {
-        require(bytes(_isbn).length > 0, "ISBN cannot be empty");
-        require(insertedBooks[_isbn], "The book with this ISBN does not exist");
-        require(!booksMap[_isbn].borrowers[msg.sender], "You cannot borrow the same book more than once");
-        require(booksMap[_isbn].quantity > 0, "We dont have available copies of that book right now");
+    function BorrowBook(bytes32 _bookId) external {
+        string memory isbn = books[_bookId].isbn;
+        if (books[_bookId].borrowers[msg.sender]) revert BookAttemptToBorrowTwice(msg.sender, _bookId);
+        if (books[_bookId].quantity == 0) revert BookNotAvailableToBorrow(msg.sender, _bookId);
 
-        booksMap[_isbn].quantity--;
-        booksMap[_isbn].borrowers[msg.sender] = true;
+        books[_bookId].quantity--;
+        books[_bookId].borrowers[msg.sender] = true;
 
-        emit BorrowAction(_isbn, msg.sender, BorrowActions.Borrowed);
+        emit BorrowAction(_bookId, isbn, msg.sender, BorrowActions.Borrowed);
     }
 
-    function ReturnBook(string calldata _isbn) external {
-        require(bytes(_isbn).length > 0, "ISBN cannot be empty");
-        require(insertedBooks[_isbn], "The book with this ISBN does not exist");
-        require(booksMap[_isbn].borrowers[msg.sender], "You did not borrow that book from us");
+    function ReturnBook(bytes32 _bookId) external {
+        string memory isbn = books[_bookId].isbn;
+        if (!books[_bookId].borrowers[msg.sender]) revert BookWasntBorrowedFromUser(msg.sender, _bookId);
 
-        booksMap[_isbn].quantity++;
-        booksMap[_isbn].borrowers[msg.sender] = false;
+        books[_bookId].quantity++;
+        books[_bookId].borrowers[msg.sender] = false;
 
-        emit BorrowAction(_isbn, msg.sender, BorrowActions.Returned);
+        emit BorrowAction(_bookId, isbn, msg.sender, BorrowActions.Returned);
     }
 }

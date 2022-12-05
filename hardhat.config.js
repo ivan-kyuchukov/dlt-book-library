@@ -8,7 +8,11 @@ module.exports = {
   networks: {
     goerli: {
       url: INFURA_API_URL,
-      accounts: [MM_PRIVATE_KEY]
+      accounts: [MM_PRIVATE_KEY],
+      allowUnlimitedContractSize: true
+    },
+    localhost: {
+      allowUnlimitedContractSize: true
     }
   },
   etherscan: {
