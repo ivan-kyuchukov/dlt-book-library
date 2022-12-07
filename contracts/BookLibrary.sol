@@ -40,18 +40,6 @@ contract BookLibrary is Ownable {
     error CannotDecreaseBookQuantity(address caller, bytes32 _bookId, uint16 _oldQuantity, uint16 _newQuantity);
     // End declarations
 
-    function insertBook(Book storage book, bytes32 id, string calldata _isbn, string calldata _title, uint16 _quantity) private {
-        book.id = id;
-        book.isbn = _isbn;
-        book.title = _title;
-        book.quantity = _quantity;
-
-        if (!insertedBooks[id]) {
-            insertedBooks[id] = true;
-            bookKeys.push(id);
-        }
-    }
-
     // this is public for testing purposes
     function hash(string calldata _stringToHash) public pure returns (bytes32) {
         return keccak256(abi.encodePacked(_stringToHash));
@@ -76,18 +64,20 @@ contract BookLibrary is Ownable {
     function AddUpdateBook(string calldata _isbn, string calldata _title, uint16 _quantity) external onlyOwner validNewBook(_isbn, _title, _quantity) {
         bytes32 bookId = hash(_isbn);
         Book storage book = books[bookId];
-        
-        if (insertedBooks[bookId]) {
-            if (_quantity < book.quantity) revert CannotDecreaseBookQuantity(msg.sender, bookId, book.quantity, _quantity);
-            book.isbn = _isbn;
-            book.title = _title;
-            book.quantity = _quantity;
+        if (insertedBooks[bookId] && _quantity < book.quantity) revert CannotDecreaseBookQuantity(msg.sender, bookId, book.quantity, _quantity);
+
+        book.isbn = _isbn;
+        book.title = _title;
+        book.quantity = _quantity;
+        if (!insertedBooks[bookId]) {
+            insertedBooks[bookId] = true;
+            bookKeys.push(bookId);
+
             emit BookAction(bookId, _isbn, BookActions.Created);
+            return;
         }
-        else {
-            insertBook(book, bookId, _isbn, _title, _quantity);
-            emit BookAction(bookId, _isbn, BookActions.Updated);
-        }
+
+        emit BookAction(bookId, _isbn, BookActions.Updated);
     }
 
     function BorrowBook(bytes32 _bookId) external {
